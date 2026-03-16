@@ -1,0 +1,13 @@
+bin/
+obj/
+.playwright/
+wwwroot/screenshots/
+.vscode/
+node_modules/
+bin/
+obj/
+.playwright/
+wwwroot/screenshots/
+.vscode/
+node_modules/
+*.user

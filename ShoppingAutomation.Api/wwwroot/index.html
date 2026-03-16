@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Shopping System</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f9; padding: 40px; color: #333; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 800px; margin: auto; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 25px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background: #e74c3c; color: white; border: none; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 6px; transition: background 0.3s; margin-top: 10px; }
+        button:hover { background: #c0392b; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        #log { margin-top: 25px; padding: 15px; background: #2c3e50; color: #ecf0f1; border-radius: 8px; display: none; }
+        .step { margin: 8px 0; padding: 8px; border-bottom: 1px solid #3e4f5f; display: flex; justify-content: space-between; }
+        .success-text { color: #2ecc71; }
+        .error-text { color: #e74c3c; }
+
+        /* גלריית התמונות החדשה */
+        .proof-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; display: none; }
+        .proof-item { text-align: center; }
+        .proof-item img { width: 100%; border-radius: 6px; border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; }
+        .proof-item img:hover { transform: scale(1.02); }
+        .proof-label { margin-top: 8px; font-size: 14px; color: #bdc3c7; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>SauceDemo Purchase Automation</h2>
+        
+        <div class="input-group">
+            <label for="query">Product Name</label>
+            <input type="text" id="query" placeholder="Search (e.g., Backpack, Bike, Shirt)">
+        </div>
+
+        <div class="input-group">
+            <label for="price">Maximum Price ($)</label>
+            <input type="number" id="price" placeholder="Enter max price (e.g., 30)">
+        </div>
+
+        <button id="runBtn" onclick="executeAutomation()">Run Automation</button>
+        
+        <div id="log">
+            <div id="status-header">Initializing...</div>
+            <div id="steps-container"></div>
+            
+            <div id="proofGallery" class="proof-container">
+                <div class="proof-item">
+                    <a id="summaryLink" target="_blank"><img id="summaryImg" src="" alt="Order Summary"></a>
+                    <div class="proof-label">1. Order Summary (Selected Product)</div>
+                </div>
+                <div class="proof-item">
+                    <a id="successLink" target="_blank"><img id="successImg" src="" alt="Final Confirmation"></a>
+                    <div class="proof-label">2. Purchase Confirmation</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function executeAutomation() {
+        const btn = document.getElementById('runBtn');
+        const logDiv = document.getElementById('log');
+        const stepsContainer = document.getElementById('steps-container');
+        const statusHeader = document.getElementById('status-header');
+        const proofGallery = document.getElementById('proofGallery');
+        const summaryImg = document.getElementById('summaryImg');
+        const successImg = document.getElementById('successImg');
+        const summaryLink = document.getElementById('summaryLink');
+        const successLink = document.getElementById('successLink');
+        
+        btn.disabled = true;
+        logDiv.style.display = 'block';
+        stepsContainer.innerHTML = '';
+        statusHeader.innerHTML = "Working... Please wait.";
+        proofGallery.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/Search/run', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: document.getElementById('query').value || "backpack",
+                    email: "standard_user",
+                    password: "secret_sauce",
+                    maxPrice: document.getElementById('price').value || "100"
+                })
+            });
+
+            const data = await response.json();
+            console.log("Server Response Data:", data); // לבדיקה ב-F12
+
+            if (data.steps) {
+                data.steps.forEach(step => {
+                    const div = document.createElement('div');
+                    div.className = 'step';
+                    div.innerHTML = `<span>${step.stepName}</span><span class="${step.success ? 'success-text' : 'error-text'}">${step.success ? '✔' : '✘'} (${step.durationMs}ms)</span>`;
+                    stepsContainer.appendChild(div);
+                });
+            }
+
+            if (data.success) {
+                statusHeader.innerHTML = "✅ SUCCESS: Order Completed!";
+                statusHeader.className = "success-text";
+                
+                // תיקון קריטי: תמיכה גם באותיות גדולות וגם בקטנות (JSON naming conventions)
+                const sumPath = data.summaryScreenshotPath || data.SummaryScreenshotPath;
+                const secPath = data.screenshotPath || data.ScreenshotPath;
+
+                if (sumPath) {
+                    summaryImg.src = sumPath;
+                    summaryLink.href = sumPath;
+                }
+                if (secPath) {
+                    successImg.src = secPath;
+                    successLink.href = secPath;
+                }
+                
+                proofGallery.style.display = 'grid';
+            } else {
+                statusHeader.innerHTML = "❌ FAILED: " + (data.errorMessage || "Unknown Error");
+                statusHeader.className = "error-text";
+            }
+        } catch (err) {
+            statusHeader.innerHTML = "❌ Connection Error";
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
